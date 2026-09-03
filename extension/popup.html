@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WhyUs</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>WhyUs</h1>
+      <p class="tagline">Draft tailored job application essays</p>
+    </header>
+
+    <main>
+      <!-- Step 1: Question -->
+      <section class="input-section">
+        <label for="question">Essay Question <span class="required">*</span></label>
+        <textarea 
+          id="question" 
+          placeholder='e.g., "Why do you want to work at our company?"'
+          rows="3"
+        ></textarea>
+        <button id="detectSelection" class="btn-secondary">
+          📋 Use Selected Text
+        </button>
+      </section>
+
+      <!-- Step 2: Company & Role -->
+      <section class="input-section">
+        <div class="row">
+          <div class="col">
+            <label for="company">Company Name <span class="required">*</span></label>
+            <input 
+              type="text" 
+              id="company" 
+              placeholder="e.g., Google"
+            >
+          </div>
+          <div class="col">
+            <label for="role">Role (optional)</label>
+            <input 
+              type="text" 
+              id="role" 
+              placeholder="e.g., Software Engineer"
+            >
+          </div>
+        </div>
+        <button id="detectCompany" class="btn-secondary">
+          🔍 Auto-detect from page
+        </button>
+      </section>
+
+      <!-- Step 3: Resume -->
+      <section class="input-section">
+        <label>Resume <span class="required">*</span></label>
+        
+        <div id="resumeUploadArea">
+          <input 
+            type="file" 
+            id="resumeFile" 
+            accept=".pdf,.docx,.txt"
+            style="display: none;"
+          >
+          <button id="uploadResumeBtn" class="btn-secondary">
+            📄 Upload Resume (PDF, DOCX, or TXT)
+          </button>
+          <div id="resumeStatus" class="resume-status"></div>
+        </div>
+
+        <div id="savedResumes" style="display: none;">
+          <select id="savedResumeSelect">
+            <option value="">-- Select saved resume --</option>
+          </select>
+          <button id="useSavedResume" class="btn-secondary">Use This Resume</button>
+          <button id="deleteSavedResume" class="btn-link">Delete</button>
+        </div>
+      </section>
+
+      <!-- Step 4: Generate -->
+      <section class="action-section">
+        <button id="generateBtn" class="btn-primary" disabled>
+          ✨ Generate Answer
+        </button>
+        <div id="status" class="status"></div>
+      </section>
+
+      <!-- Step 5: Results -->
+      <section id="resultsSection" class="results-section" style="display: none;">
+        <div class="result-header">
+          <h2>Your Draft</h2>
+          <div class="quality-indicators">
+            <span id="wordCount" class="badge"></span>
+            <span id="qualityScore" class="badge"></span>
+          </div>
+        </div>
+        
+        <div id="draftText" class="draft-text"></div>
+        
+        <div class="draft-actions">
+          <button id="copyBtn" class="btn-primary">
+            📋 Copy to Clipboard
+          </button>
+          <button id="regenerateBtn" class="btn-secondary">
+            🔄 Regenerate
+          </button>
+        </div>
+
+        <!-- Quality feedback -->
+        <div id="qualityFeedback" class="quality-feedback" style="display: none;">
+          <h3>Quality Notes</h3>
+          <div id="feedbackContent"></div>
+        </div>
+
+        <!-- Metadata (collapsible) -->
+        <details class="metadata">
+          <summary>View Details</summary>
+          <div id="metadataContent"></div>
+        </details>
+      </section>
+
+      <!-- Settings -->
+      <section class="settings-section">
+        <details>
+          <summary>⚙️ Settings</summary>
+          <div class="settings-content">
+            <label for="backendUrl">Backend URL:</label>
+            <input 
+              type="text" 
+              id="backendUrl" 
+              value="http://localhost:3000"
+              placeholder="http://localhost:3000"
+            >
+            <button id="saveSettings" class="btn-secondary">Save</button>
+            <p class="help-text">Change this if you're running the backend on a different port</p>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <footer>
+      <p class="help-text">
+        Tip: Highlight the question on the page, then click "Use Selected Text"
+      </p>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
