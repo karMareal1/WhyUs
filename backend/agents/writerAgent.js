@@ -8,7 +8,7 @@ import fetch from 'node-fetch';
 
 export class WriterAgent {
   constructor(apiKeys = {}) {
-    this.openaiKey = apiKeys.openai;
+    this.groqKey = apiKeys.groq;
   }
 
   /**
@@ -109,21 +109,21 @@ JSON:`;
   }
 
   /**
-   * Call OpenAI API with higher quality model for writing
+   * Call Groq API with higher quality model for writing
    */
   async callLLM(prompt, maxTokens = 800) {
-    if (!this.openaiKey) {
-      throw new Error('OpenAI API key not configured');
+    if (!this.groqKey) {
+      throw new Error('Groq API key not configured');
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.openaiKey}`
+        'Authorization': `Bearer ${this.groqKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'openai/gpt-oss-120b',
         messages: [
           { 
             role: 'system', 
@@ -137,7 +137,7 @@ JSON:`;
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();

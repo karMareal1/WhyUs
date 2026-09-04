@@ -8,7 +8,7 @@ import fetch from 'node-fetch';
 
 export class CriticAgent {
   constructor(apiKeys = {}) {
-    this.openaiKey = apiKeys.openai;
+    this.groqKey = apiKeys.groq;
   }
 
   /**
@@ -140,21 +140,21 @@ JSON:`;
   }
 
   /**
-   * Call OpenAI API
+   * Call Groq API
    */
   async callLLM(prompt, maxTokens = 1000) {
-    if (!this.openaiKey) {
-      throw new Error('OpenAI API key not configured');
+    if (!this.groqKey) {
+      throw new Error('Groq API key not configured');
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.openaiKey}`
+        'Authorization': `Bearer ${this.groqKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'openai/gpt-oss-120b',
         messages: [
           { 
             role: 'system', 
@@ -168,7 +168,7 @@ JSON:`;
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
