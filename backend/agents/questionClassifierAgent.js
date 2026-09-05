@@ -109,16 +109,31 @@ JSON:`;
           { role: 'user', content: prompt }
         ],
         max_tokens: maxTokens,
-        temperature: 0.1
+        temperature: 0.1,
+        response_format: { type: "json_object" }
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text();
+      let errorDetail = errorBody;
+      try {
+        const errorJson = JSON.parse(errorBody);
+        errorDetail = errorJson.error?.message || errorBody;
+      } catch (e) {
+        // Keep raw error text if not JSON
+      }
+      throw new Error(`Groq API error ${response.status}: ${errorDetail}`);
     }
 
     const data = await response.json();
-    return data.choices[0].message.content;
+    const content = data.choices[0]?.message?.content;
+    
+    if (!content || content.trim() === '') {
+      throw new Error('Groq returned empty response');
+    }
+    
+    return content;
   }
 
   /**

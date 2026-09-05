@@ -21,25 +21,15 @@ export class WriterAgent {
   async write(companyBrief, candidateBrief, questionSpec, rewriteRequest = null) {
     console.log(`[WriterAgent] Writing draft for ${questionSpec.intent} question`);
     
-    try {
-      const draft = await this.generateDraft(
-        companyBrief,
-        candidateBrief,
-        questionSpec,
-        rewriteRequest
-      );
+    const draft = await this.generateDraft(
+      companyBrief,
+      candidateBrief,
+      questionSpec,
+      rewriteRequest
+    );
 
-      console.log(`[WriterAgent] Draft complete (${draft.wordCount} words)`);
-      return draft;
-    } catch (error) {
-      console.error(`[WriterAgent] Error writing draft:`, error);
-      return {
-        text: 'Unable to generate draft. Please try again.',
-        wordCount: 0,
-        citations: [],
-        error: error.message
-      };
-    }
+    console.log(`[WriterAgent] Draft complete (${draft.wordCount} words)`);
+    return draft;
   }
 
   /**
@@ -132,16 +122,31 @@ JSON:`;
           { role: 'user', content: prompt }
         ],
         max_tokens: maxTokens,
-        temperature: 0.7
+        temperature: 0.7,
+        response_format: { type: "json_object" }
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text();
+      let errorDetail = errorBody;
+      try {
+        const errorJson = JSON.parse(errorBody);
+        errorDetail = errorJson.error?.message || errorBody;
+      } catch (e) {
+        // Keep raw error text if not JSON
+      }
+      throw new Error(`Groq API error ${response.status}: ${errorDetail}`);
     }
 
     const data = await response.json();
-    return data.choices[0].message.content;
+    const content = data.choices[0]?.message?.content;
+    
+    if (!content || content.trim() === '') {
+      throw new Error('Groq returned empty response');
+    }
+    
+    return content;
   }
 
   /**
