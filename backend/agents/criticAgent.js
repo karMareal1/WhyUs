@@ -22,6 +22,15 @@ export class CriticAgent {
   async critique(draft, companyBrief, candidateBrief, questionSpec) {
     console.log(`[CriticAgent] Reviewing draft (${draft.wordCount} words)`);
     
+    // Fail early if draft is empty or invalid
+    if (!draft.text || draft.text.trim().length === 0) {
+      throw new Error('Cannot critique empty draft');
+    }
+    
+    if (draft.wordCount < 10) {
+      throw new Error(`Draft is too short to critique (${draft.wordCount} words)`);
+    }
+    
     const critique = await this.reviewDraft(
       draft,
       companyBrief,

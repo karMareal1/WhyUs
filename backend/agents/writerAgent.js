@@ -57,14 +57,7 @@ Tone: ${questionSpec.register}
 
 ${rewriteRequest ? `REVISION REQUEST: ${rewriteRequest}` : ''}
 
-Write a compelling, specific answer in first person. Return JSON:
-{
-  "text": "your draft paragraph",
-  "wordCount": actual_word_count,
-  "citations": [
-    {"fact": "specific fact used", "source": "company brief or resume"}
-  ]
-}
+Write a compelling, specific answer in first person.
 
 CRITICAL WRITING RULES:
 1. Write in natural first person (I, my, me)
@@ -80,28 +73,36 @@ CRITICAL WRITING RULES:
 
 Target ${lengthGuidance[questionSpec.expectedLength]}.
 
-JSON:`;
+Return ONLY the essay paragraph as plain text. Do not use markdown formatting or code blocks. Just the paragraph itself.`;
 
-    try {
-      const response = await this.callLLM(prompt, 800);
-      const draft = JSON.parse(this.extractJSON(response));
-      
-      // Ensure wordCount is calculated
-      if (!draft.wordCount) {
-        draft.wordCount = draft.text.split(/\s+/).length;
-      }
-      
-      return draft;
-    } catch (error) {
-      console.error(`[WriterAgent] LLM generation error:`, error);
-      throw error;
+    const responseText = await this.callLLM(prompt, 2000);
+    
+    if (!responseText || responseText.trim().length === 0) {
+      throw new Error('Writer returned empty response');
     }
+
+    // Clean up the response (remove any markdown fences if present)
+    let cleanText = responseText.trim();
+    cleanText = cleanText.replace(/^```[\w]*\n?/gm, '').replace(/\n?```$/gm, '');
+    
+    // Calculate word count
+    const wordCount = cleanText.split(/\s+/).filter(w => w.length > 0).length;
+    
+    if (wordCount < 10) {
+      throw new Error(`Writer returned suspiciously short response (${wordCount} words): ${cleanText.substring(0, 100)}`);
+    }
+
+    return {
+      text: cleanText,
+      wordCount: wordCount,
+      citations: [] // Citations can be added back if needed
+    };
   }
 
   /**
    * Call Groq API with higher quality model for writing
    */
-  async callLLM(prompt, maxTokens = 800) {
+  async callLLM(prompt, maxTokens = 2000) {
     if (!this.groqKey) {
       throw new Error('Groq API key not configured');
     }
@@ -122,8 +123,7 @@ JSON:`;
           { role: 'user', content: prompt }
         ],
         max_tokens: maxTokens,
-        temperature: 0.7,
-        response_format: { type: "json_object" }
+        temperature: 0.7
       })
     });
 
@@ -143,17 +143,16 @@ JSON:`;
     const content = data.choices[0]?.message?.content;
     
     if (!content || content.trim() === '') {
-      throw new Error('Groq returned empty response');
+      // Provide debug info for empty responses
+      const debugInfo = JSON.stringify({
+        finish_reason: data.choices[0]?.finish_reason,
+        model: data.model,
+        usage: data.usage
+      });
+      throw new Error(`Groq returned empty content. Debug: ${debugInfo}`);
     }
     
     return content;
   }
 
-  /**
-   * Extract JSON from LLM response
-   */
-  extractJSON(text) {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    return jsonMatch ? jsonMatch[0] : text;
-  }
 }
