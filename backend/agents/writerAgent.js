@@ -57,14 +57,7 @@ Tone: ${questionSpec.register}
 
 ${rewriteRequest ? `REVISION REQUEST: ${rewriteRequest}` : ''}
 
-Write a compelling, specific answer in first person. Return JSON:
-{
-  "text": "your draft paragraph",
-  "wordCount": actual_word_count,
-  "citations": [
-    {"fact": "specific fact used", "source": "company brief or resume"}
-  ]
-}
+Write a compelling, specific answer in first person.
 
 CRITICAL WRITING RULES:
 1. Write in natural first person (I, my, me)
@@ -80,16 +73,18 @@ CRITICAL WRITING RULES:
 
 Target ${lengthGuidance[questionSpec.expectedLength]}.
 
-JSON:`;
+Return ONLY the essay paragraph text. No JSON. No markdown code fences. No extra formatting.`;
 
     try {
-      const response = await this.callLLM(prompt, 800);
-      const draft = JSON.parse(this.extractJSON(response));
+      const content = await this.callLLM(prompt, 2000);
+      const text = content.trim();
+      const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
       
-      // Ensure wordCount is calculated
-      if (!draft.wordCount) {
-        draft.wordCount = draft.text.split(/\s+/).length;
-      }
+      const draft = {
+        text: text,
+        wordCount: wordCount,
+        citations: []
+      };
       
       return draft;
     } catch (error) {
@@ -101,7 +96,7 @@ JSON:`;
   /**
    * Call Groq API with higher quality model for writing
    */
-  async callLLM(prompt, maxTokens = 800) {
+  async callLLM(prompt, maxTokens = 2000) {
     if (!this.groqKey) {
       throw new Error('Groq API key not configured');
     }
@@ -117,13 +112,12 @@ JSON:`;
         messages: [
           { 
             role: 'system', 
-            content: 'You are a skilled writer who creates specific, human-sounding content grounded in facts. Never write generic corporate fluff.' 
+            content: 'You are a skilled writer who creates specific, human-sounding content grounded in facts. Never write generic corporate fluff. Return only plain text paragraphs, no JSON, no markdown.' 
           },
           { role: 'user', content: prompt }
         ],
         max_tokens: maxTokens,
-        temperature: 0.7,
-        response_format: { type: "json_object" }
+        temperature: 0.7
       })
     });
 

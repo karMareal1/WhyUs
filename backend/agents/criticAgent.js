@@ -22,6 +22,11 @@ export class CriticAgent {
   async critique(draft, companyBrief, candidateBrief, questionSpec) {
     console.log(`[CriticAgent] Reviewing draft (${draft.wordCount} words)`);
     
+    // Validate draft content before review
+    if (!draft.text || draft.text.trim().length < 20) {
+      throw new Error('Draft text is empty or too short (< 20 characters). Cannot review garbage content.');
+    }
+    
     const critique = await this.reviewDraft(
       draft,
       companyBrief,
