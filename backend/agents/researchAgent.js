@@ -10,7 +10,7 @@ const GOOGLE_SEARCH_API = 'https://www.googleapis.com/customsearch/v1';
 
 export class ResearchAgent {
   constructor(apiKeys = {}) {
-    this.openaiKey = apiKeys.openai;
+    this.groqKey = apiKeys.groq;
   }
 
   /**
@@ -138,21 +138,21 @@ JSON:`;
   }
 
   /**
-   * Call OpenAI API
+   * Call Groq API
    */
   async callLLM(prompt, maxTokens = 1000) {
-    if (!this.openaiKey) {
-      throw new Error('OpenAI API key not configured');
+    if (!this.groqKey) {
+      throw new Error('Groq API key not configured');
     }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.openaiKey}`
+        'Authorization': `Bearer ${this.groqKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'openai/gpt-oss-20b',
         messages: [
           { role: 'system', content: 'You are a research assistant that extracts factual company information.' },
           { role: 'user', content: prompt }
@@ -163,7 +163,7 @@ JSON:`;
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();

@@ -111,7 +111,7 @@ Company research is cached (1 hour TTL) for repeated queries to same company.
 ### Backend
 - **Runtime**: Node.js (ES modules)
 - **Framework**: Express
-- **LLM**: OpenAI GPT-4o (Writer, Critic), GPT-4o-mini (other agents)
+- **LLM**: Groq API with openai/gpt-oss-120b (Writer, Critic), openai/gpt-oss-20b (other agents)
 - **Resume Parsing**: pdf-parse, mammoth
 - **Web Research**: node-fetch (ready for search API integration)
 
@@ -126,7 +126,7 @@ Company research is cached (1 hour TTL) for repeated queries to same company.
 ### Prerequisites
 
 - Node.js 18+ 
-- OpenAI API key
+- Groq API key (free tier available at https://console.groq.com/keys)
 - Chrome browser
 
 ### 1. Backend Setup
@@ -140,8 +140,8 @@ npm install
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your OpenAI API key:
-# OPENAI_API_KEY=sk-...
+# Edit .env and add your free Groq API key:
+# GROQ_API_KEY=gsk_...
 
 # Start server
 npm start
@@ -335,17 +335,19 @@ curl -X POST http://localhost:3000/api/generate \
 4. **Error Handling**: Basic error handling. Could be more robust.
 5. **Resume Size**: 5MB limit. Sufficient for text documents.
 6. **Caching**: Simple in-memory cache (clears on server restart). Use Redis for production.
+7. **Free Tier Limits**: Groq free tier has rate limits. For high-volume production, consider paid tier or alternative providers.
 
 ## 🔮 Future Enhancements
 
 - [ ] Real web search API integration
-- [ ] Support for more LLM providers (Anthropic, local models)
+- [ ] Support for more LLM providers (OpenAI, Anthropic, local models)
 - [ ] Browser extension for Firefox, Edge
 - [ ] Save/manage multiple drafts
 - [ ] Export to various formats
 - [ ] Fine-tune detection of company info from LinkedIn, Glassdoor
 - [ ] Support for multiple languages
 - [ ] Integration with application platforms (Workday, Greenhouse, etc.)
+- [ ] Rate limiting and caching for production scale
 
 ## 📝 Development Notes
 
@@ -354,8 +356,9 @@ curl -X POST http://localhost:3000/api/generate \
 1. **Single Responsibility**: Each agent has one clear job
 2. **Structured Handoffs**: JSON schemas enforce contracts
 3. **No Invented Facts**: Agents never hallucinate data
-4. **Fast & Cheap**: Use mini models where possible (Research, Resume, Classifier)
-5. **Quality Where It Matters**: Use best model (GPT-4o) for Writer and Critic
+4. **Fast & Cheap**: Use smaller models where possible (openai/gpt-oss-20b for Research, Resume, Classifier)
+5. **Quality Where It Matters**: Use best model (openai/gpt-oss-120b) for Writer and Critic
+6. **Free Tier Friendly**: Groq provides free API access for hackathon demos
 
 ### Prompt Engineering
 
@@ -366,13 +369,15 @@ All agent prompts follow this pattern:
 - **CRITICAL RULES** section with constraints
 - Low temperature for factual tasks (0.1-0.3)
 - Higher temperature for creative writing (0.7)
+- OpenAI-compatible API calls via Groq's free tier
 
 ### Latency Optimization
 
 - Parallel execution: Research + Resume + Classifier run simultaneously
 - Company caching: Same company research reused for 1 hour
 - Token budgets: Strict max_tokens limits per agent
-- Model selection: Mini for speed, GPT-4o only where quality critical
+- Model selection: gpt-oss-20b for speed (Research, Resume, Classifier), gpt-oss-120b where quality critical (Writer, Critic)
+- Groq's blazing fast inference: 900+ tokens/sec on smaller models
 
 ## 📄 License
 
@@ -386,8 +391,9 @@ Key areas for contribution:
 - Real web search integration
 - Better company detection algorithms
 - UI/UX improvements
-- Additional LLM provider support
+- Additional LLM provider support (OpenAI, Anthropic, etc.)
 - Test coverage
+- Production-ready rate limiting and error handling
 
 ## 💡 Credits
 

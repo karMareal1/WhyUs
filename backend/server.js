@@ -15,11 +15,11 @@ app.use(express.raw({ type: 'application/octet-stream', limit: '10mb' }));
 
 // Initialize orchestrator with API keys
 const apiKeys = {
-  openai: process.env.OPENAI_API_KEY
+  groq: process.env.GROQ_API_KEY
 };
 
-if (!apiKeys.openai) {
-  console.warn('WARNING: OPENAI_API_KEY not set in environment variables');
+if (!apiKeys.groq) {
+  console.warn('WARNING: GROQ_API_KEY not set in environment variables');
 }
 
 const orchestrator = new Orchestrator(apiKeys);
@@ -30,7 +30,7 @@ app.get('/health', (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     apiKeysConfigured: {
-      openai: !!apiKeys.openai
+      groq: !!apiKeys.groq
     }
   });
 });
@@ -125,7 +125,7 @@ app.post('/api/cache/clear', (req, res) => {
 app.listen(PORT, () => {
   console.log(`\n🚀 WhyUs Backend Server`);
   console.log(`📡 Listening on http://localhost:${PORT}`);
-  console.log(`🔑 OpenAI API Key: ${apiKeys.openai ? 'Configured ✓' : 'Missing ✗'}`);
+  console.log(`🔑 Groq API Key: ${apiKeys.groq ? 'Configured ✓' : 'Missing ✗'}`);
   console.log(`\nEndpoints:`);
   console.log(`  GET  /health          - Health check`);
   console.log(`  POST /api/generate    - Generate essay`);
