@@ -60,6 +60,11 @@ app.post('/api/generate', async (req, res) => {
       resumeFileType: resumeFileType || 'pdf'
     });
 
+    // If orchestration failed internally, return 500
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
     res.json(result);
 
   } catch (error) {

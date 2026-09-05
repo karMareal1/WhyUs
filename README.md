@@ -332,9 +332,48 @@ curl -X POST http://localhost:3000/api/generate \
 1. **Web Search**: Currently using mock search results. For production, integrate real search API (Google Custom Search, Bing, etc.)
 2. **Icons**: Placeholder icons included. Replace with proper design for production.
 3. **Rate Limiting**: No rate limiting on API. Add for production deployment.
-4. **Error Handling**: Basic error handling. Could be more robust.
-5. **Resume Size**: 5MB limit. Sufficient for text documents.
-6. **Caching**: Simple in-memory cache (clears on server restart). Use Redis for production.
+4. **Resume Size**: 5MB limit. Sufficient for text documents.
+5. **Caching**: Simple in-memory cache (clears on server restart). Use Redis for production.
+
+## 🔧 Troubleshooting
+
+### Extension shows error or can't connect to backend
+
+1. **Check backend is running**: Make sure you started the backend server with `npm start` in the `backend/` folder
+2. **Check backend URL**: In extension settings, verify the backend URL is `http://localhost:3000`
+3. **Check browser console**: Right-click extension popup → Inspect → Console tab for error details
+
+### Generation fails with API errors
+
+1. **Check Groq API key**:
+   ```bash
+   curl http://localhost:3000/health
+   # Should show: "groq": true
+   ```
+   
+2. **Verify API key in backend/.env**:
+   ```bash
+   # Make sure GROQ_API_KEY is set correctly
+   GROQ_API_KEY=gsk_...
+   ```
+
+3. **Check backend terminal logs**: Look for detailed error messages in the terminal where you ran `npm start`
+
+### Common Groq API errors
+
+- **401 Unauthorized**: Invalid API key. Get a new one at https://console.groq.com/keys
+- **429 Rate Limit**: Free tier rate limit exceeded. Wait a few minutes or upgrade to paid tier
+- **400 Bad Request**: Usually means the model name is invalid or deprecated
+- **Empty response**: Groq returned no content. This is now caught and reported as an error
+
+### If you see "Unable to generate draft" message
+
+This used to be shown as a "success" but is actually an error. This has been fixed - you should now see a proper error message with the real reason (API key issue, rate limit, etc.).
+
+Check:
+1. Backend terminal logs for the actual error
+2. `/health` endpoint shows API key is configured
+3. Your Groq API key is valid and has available quota
 7. **Free Tier Limits**: Groq free tier has rate limits. For high-volume production, consider paid tier or alternative providers.
 
 ## 🔮 Future Enhancements

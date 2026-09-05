@@ -195,16 +195,26 @@ async function generateAnswer() {
 
     const result = await response.json();
 
-    if (result.success) {
+    // Check for explicit failure or fake draft (failure disguised as success)
+    const failureText = 'Unable to generate draft. Please try again.';
+    const isDraftFake = result.draft === failureText || 
+                        result.draft.includes(failureText) ||
+                        !result.draft || 
+                        result.draft.trim().length < 10;
+    
+    if (result.success && !isDraftFake) {
       displayResults(result);
       showStatus('Draft generated successfully!', 'success', 3000);
     } else {
-      throw new Error(result.error || 'Generation failed');
+      const errorMsg = result.error || 
+                       (isDraftFake ? 'Failed to generate draft. The AI service may be unavailable.' : 'Generation failed');
+      throw new Error(errorMsg);
     }
 
   } catch (error) {
     console.error('Generation error:', error);
-    showStatus(`Error: ${error.message}. Make sure the backend server is running.`, 'error', 5000);
+    resultsSection.style.display = 'none';
+    showStatus(`Error: ${error.message}. Check backend logs or verify GROQ_API_KEY in /health.`, 'error', 8000);
   } finally {
     generateBtn.disabled = false;
   }

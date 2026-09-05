@@ -22,31 +22,15 @@ export class CriticAgent {
   async critique(draft, companyBrief, candidateBrief, questionSpec) {
     console.log(`[CriticAgent] Reviewing draft (${draft.wordCount} words)`);
     
-    try {
-      const critique = await this.reviewDraft(
-        draft,
-        companyBrief,
-        candidateBrief,
-        questionSpec
-      );
+    const critique = await this.reviewDraft(
+      draft,
+      companyBrief,
+      candidateBrief,
+      questionSpec
+    );
 
-      console.log(`[CriticAgent] Review complete - ${critique.approved ? 'APPROVED' : 'REVISION REQUESTED'}`);
-      return critique;
-    } catch (error) {
-      console.error(`[CriticAgent] Error during critique:`, error);
-      // Default to approval on error
-      return {
-        approved: true,
-        genericnessScore: 5,
-        factualSupport: {
-          supported: true,
-          unsupportedClaims: []
-        },
-        templatedPhrasing: [],
-        finalDraft: draft.text,
-        error: error.message
-      };
-    }
+    console.log(`[CriticAgent] Review complete - ${critique.approved ? 'APPROVED' : 'REVISION REQUESTED'}`);
+    return critique;
   }
 
   /**
@@ -163,16 +147,31 @@ JSON:`;
           { role: 'user', content: prompt }
         ],
         max_tokens: maxTokens,
-        temperature: 0.3
+        temperature: 0.3,
+        response_format: { type: "json_object" }
       })
     });
 
     if (!response.ok) {
-      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
+      const errorBody = await response.text();
+      let errorDetail = errorBody;
+      try {
+        const errorJson = JSON.parse(errorBody);
+        errorDetail = errorJson.error?.message || errorBody;
+      } catch (e) {
+        // Keep raw error text if not JSON
+      }
+      throw new Error(`Groq API error ${response.status}: ${errorDetail}`);
     }
 
     const data = await response.json();
-    return data.choices[0].message.content;
+    const content = data.choices[0]?.message?.content;
+    
+    if (!content || content.trim() === '') {
+      throw new Error('Groq returned empty response');
+    }
+    
+    return content;
   }
 
   /**
