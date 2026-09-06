@@ -111,7 +111,8 @@ Company research is cached (1 hour TTL) for repeated queries to same company.
 ### Backend
 - **Runtime**: Node.js (ES modules)
 - **Framework**: Express
-- **LLM**: Groq API with openai/gpt-oss-120b (Writer, Critic), openai/gpt-oss-20b (other agents)
+- **LLM**: Groq API with openai/gpt-oss-120b (Writer), openai/gpt-oss-20b (Critic, Research, Resume Parser, Classifier)
+- **Rate Limiting**: Automatic retry with exponential backoff for 429 errors (free tier friendly)
 - **Resume Parsing**: pdf-parse, mammoth
 - **Web Research**: node-fetch (ready for search API integration)
 
@@ -334,6 +335,7 @@ curl -X POST http://localhost:3000/api/generate \
 3. **Rate Limiting**: No rate limiting on API. Add for production deployment.
 4. **Resume Size**: 5MB limit. Sufficient for text documents.
 5. **Caching**: Simple in-memory cache (clears on server restart). Use Redis for production.
+6. **Free Tier Limits**: Groq free tier has rate limits (8000 TPM). The system handles 429 errors with automatic retry and backoff. For high-volume production use, consider paid tier or alternative providers.
 
 ## 🔧 Troubleshooting
 
@@ -362,9 +364,17 @@ curl -X POST http://localhost:3000/api/generate \
 ### Common Groq API errors
 
 - **401 Unauthorized**: Invalid API key. Get a new one at https://console.groq.com/keys
-- **429 Rate Limit**: Free tier rate limit exceeded. Wait a few minutes or upgrade to paid tier
+- **429 Rate Limit**: Free tier rate limit exceeded. The system will automatically retry with backoff (2s/4s/8s). If you see repeated 429 errors, wait a few minutes for your quota to refresh or consider upgrading to a paid tier.
 - **400 Bad Request**: Usually means the model name is invalid or deprecated
 - **Empty response**: Groq returned no content. This is now caught and reported as an error
+
+### Rate Limit Optimization
+
+To stay within Groq free tier limits (8000 TPM for gpt-oss-120b):
+- **Critic uses gpt-oss-20b** (lighter model, sufficient for QA)
+- **Writer uses gpt-oss-120b** (preserves quality for the most important task)
+- **Automatic retry logic** handles transient 429 errors with exponential backoff
+- **Reduced token usage** in Critic prompts (only passes essential fields from briefs)
 
 ### If you see "Unable to generate draft" message
 
@@ -398,6 +408,7 @@ Check:
 4. **Fast & Cheap**: Use smaller models where possible (openai/gpt-oss-20b for Research, Resume, Classifier)
 5. **Quality Where It Matters**: Use best model (openai/gpt-oss-120b) for Writer and Critic
 6. **Free Tier Friendly**: Groq provides free API access for hackathon demos
+7. **Rate Limit Handling**: Automatic retry with exponential backoff for 429 errors
 
 ### Prompt Engineering
 
@@ -415,8 +426,9 @@ All agent prompts follow this pattern:
 - Parallel execution: Research + Resume + Classifier run simultaneously
 - Company caching: Same company research reused for 1 hour
 - Token budgets: Strict max_tokens limits per agent
-- Model selection: gpt-oss-20b for speed (Research, Resume, Classifier), gpt-oss-120b where quality critical (Writer, Critic)
+- Model selection: gpt-oss-20b for speed (Research, Resume, Classifier, Critic), gpt-oss-120b where quality critical (Writer)
 - Groq's blazing fast inference: 900+ tokens/sec on smaller models
+- Automatic retry with backoff: Handles rate limits gracefully on free tier
 
 ## 📄 License
 

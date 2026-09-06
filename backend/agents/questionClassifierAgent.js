@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { GroqClient } from '../groqClient.js';
 
 /**
  * Question Classifier Agent
@@ -8,7 +8,7 @@ import fetch from 'node-fetch';
 
 export class QuestionClassifierAgent {
   constructor(apiKeys = {}) {
-    this.groqKey = apiKeys.groq;
+    this.groqClient = new GroqClient(apiKeys.groq);
   }
 
   /**
@@ -74,8 +74,18 @@ Return ONLY valid JSON, no additional text.
 JSON:`;
 
     try {
-      const response = await this.callLLM(prompt, 500);
-      const questionSpec = JSON.parse(this.extractJSON(response));
+      const content = await this.groqClient.chat({
+        model: 'openai/gpt-oss-20b',
+        messages: [
+          { role: 'system', content: 'You are a question classification assistant.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 500,
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+      });
+      
+      const questionSpec = JSON.parse(this.extractJSON(content));
       return questionSpec;
     } catch (error) {
       console.error(`[QuestionClassifierAgent] LLM classification error:`, error);
@@ -86,54 +96,6 @@ JSON:`;
         originalQuestion: question
       };
     }
-  }
-
-  /**
-   * Call Groq API
-   */
-  async callLLM(prompt, maxTokens = 500) {
-    if (!this.groqKey) {
-      throw new Error('Groq API key not configured');
-    }
-
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.groqKey}`
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-20b',
-        messages: [
-          { role: 'system', content: 'You are a question classification assistant.' },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: maxTokens,
-        temperature: 0.1,
-        response_format: { type: "json_object" }
-      })
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorDetail = errorBody;
-      try {
-        const errorJson = JSON.parse(errorBody);
-        errorDetail = errorJson.error?.message || errorBody;
-      } catch (e) {
-        // Keep raw error text if not JSON
-      }
-      throw new Error(`Groq API error ${response.status}: ${errorDetail}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content || content.trim() === '') {
-      throw new Error('Groq returned empty response');
-    }
-    
-    return content;
   }
 
   /**
