@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { GroqClient } from '../groqClient.js';
 
 /**
  * Critic/QA Agent
@@ -8,7 +8,7 @@ import fetch from 'node-fetch';
 
 export class CriticAgent {
   constructor(apiKeys = {}) {
-    this.groqKey = apiKeys.groq;
+    this.groqClient = new GroqClient(apiKeys.groq);
   }
 
   /**
@@ -55,19 +55,34 @@ export class CriticAgent {
       'I believe I would be a great fit'
     ];
 
+    // Extract minimal context from briefs to save tokens
+    const companyContext = {
+      name: companyBrief.companyName,
+      mission: companyBrief.mission,
+      products: companyBrief.products?.slice(0, 3) || [],
+      topNews: companyBrief.recentNews?.slice(0, 2).map(n => n.headline || n.title) || []
+    };
+
+    const candidateContext = {
+      topSkills: candidateBrief.skills?.slice(0, 5) || [],
+      topExperience: candidateBrief.relevantExperience?.slice(0, 2).map(exp => 
+        `${exp.role || exp.title} at ${exp.company}: ${exp.achievement || exp.description}`
+      ) || []
+    };
+
     const prompt = `You are a critical editor reviewing a job application essay draft.
 
 DRAFT:
 "${draft.text}"
 
-COMPANY FACTS AVAILABLE:
-${JSON.stringify(companyBrief, null, 2)}
+COMPANY CONTEXT (mission, products, news):
+${JSON.stringify(companyContext, null, 2)}
 
-CANDIDATE FACTS AVAILABLE:
-${JSON.stringify(candidateBrief, null, 2)}
+CANDIDATE CONTEXT (skills, top experience):
+${JSON.stringify(candidateContext, null, 2)}
 
-QUESTION CONTEXT:
-${JSON.stringify(questionSpec, null, 2)}
+QUESTION: "${questionSpec.originalQuestion}"
+Intent: ${questionSpec.intent}
 
 Review the draft and return this JSON:
 {
@@ -113,8 +128,21 @@ Return ONLY valid JSON.
 JSON:`;
 
     try {
-      const response = await this.callLLM(prompt, 1000);
-      const critique = JSON.parse(this.extractJSON(response));
+      const content = await this.groqClient.chat({
+        model: 'openai/gpt-oss-20b', // Lighter model for QA to save TPM
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a critical editor who catches generic writing and ensures factual accuracy. Be strict but constructive.' 
+          },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 800,
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      });
+      
+      const critique = JSON.parse(this.extractJSON(content));
       
       // If approved, ensure finalDraft is set
       if (critique.approved && !critique.finalDraft) {
@@ -126,57 +154,6 @@ JSON:`;
       console.error(`[CriticAgent] LLM review error:`, error);
       throw error;
     }
-  }
-
-  /**
-   * Call Groq API
-   */
-  async callLLM(prompt, maxTokens = 1000) {
-    if (!this.groqKey) {
-      throw new Error('Groq API key not configured');
-    }
-
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.groqKey}`
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a critical editor who catches generic writing and ensures factual accuracy. Be strict but constructive.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: maxTokens,
-        temperature: 0.3,
-        response_format: { type: "json_object" }
-      })
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorDetail = errorBody;
-      try {
-        const errorJson = JSON.parse(errorBody);
-        errorDetail = errorJson.error?.message || errorBody;
-      } catch (e) {
-        // Keep raw error text if not JSON
-      }
-      throw new Error(`Groq API error ${response.status}: ${errorDetail}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content || content.trim() === '') {
-      throw new Error('Groq returned empty response');
-    }
-    
-    return content;
   }
 
   /**

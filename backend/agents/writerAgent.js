@@ -1,4 +1,4 @@
-import fetch from 'node-fetch';
+import { GroqClient } from '../groqClient.js';
 
 /**
  * Writer Agent
@@ -8,7 +8,7 @@ import fetch from 'node-fetch';
 
 export class WriterAgent {
   constructor(apiKeys = {}) {
-    this.groqKey = apiKeys.groq;
+    this.groqClient = new GroqClient(apiKeys.groq);
   }
 
   /**
@@ -76,7 +76,19 @@ Target ${lengthGuidance[questionSpec.expectedLength]}.
 Return ONLY the essay paragraph text. No JSON. No markdown code fences. No extra formatting.`;
 
     try {
-      const content = await this.callLLM(prompt, 2000);
+      const content = await this.groqClient.chat({
+        model: 'openai/gpt-oss-120b', // Keep 120b for Writer quality
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a skilled writer who creates specific, human-sounding content grounded in facts. Never write generic corporate fluff. Return only plain text paragraphs, no JSON, no markdown.' 
+          },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 1200, // Reduced from 2000 to save TPM
+        temperature: 0.7
+      });
+      
       const text = content.trim();
       const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
       
@@ -91,56 +103,6 @@ Return ONLY the essay paragraph text. No JSON. No markdown code fences. No extra
       console.error(`[WriterAgent] LLM generation error:`, error);
       throw error;
     }
-  }
-
-  /**
-   * Call Groq API with higher quality model for writing
-   */
-  async callLLM(prompt, maxTokens = 2000) {
-    if (!this.groqKey) {
-      throw new Error('Groq API key not configured');
-    }
-
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.groqKey}`
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a skilled writer who creates specific, human-sounding content grounded in facts. Never write generic corporate fluff. Return only plain text paragraphs, no JSON, no markdown.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: maxTokens,
-        temperature: 0.7
-      })
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorDetail = errorBody;
-      try {
-        const errorJson = JSON.parse(errorBody);
-        errorDetail = errorJson.error?.message || errorBody;
-      } catch (e) {
-        // Keep raw error text if not JSON
-      }
-      throw new Error(`Groq API error ${response.status}: ${errorDetail}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content || content.trim() === '') {
-      throw new Error('Groq returned empty response');
-    }
-    
-    return content;
   }
 
   /**
